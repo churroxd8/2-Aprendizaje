@@ -12,6 +12,7 @@ __date__ = "enero 2025"
 
 
 import math
+import random
 from collections import Counter
 
 def entrena_arbol(datos, target, clase_default, 
@@ -47,43 +48,54 @@ def entrena_arbol(datos, target, clase_default,
     """
     atributos = list(datos[0].keys())
     atributos.remove(target)
-        
-    # Criterios para deterinar si es un nodo hoja
-    if  len(datos) == 0 or len(atributos) == 0:
+
+    # Seleccionamos de forma aleatoria los atributos si variables_seleccionadas es entero
+    if isinstance(variables_seleccionadas, int) and variables_seleccionadas > 0:
+        atributos = random.sample(atributos, min(variables_seleccionadas, len(atributos)))
+
+    # En caso de ser lista, solo usamos esos atributos
+    elif isinstance(variables_seleccionadas, list):
+        atributos = [a for a in atributos if a in variables_seleccionadas]
+
+    # Revisamos si es un nodo hoja
+    if len(datos) == 0 or len(atributos) == 0:
         return NodoN(terminal=True, clase_default=clase_default)
     
     clases = Counter(d[target] for d in datos)
     clase_default = clases.most_common(1)[0][0]
-    
-    if (max_profundidad == 0 or 
-        len(datos) <= min_ejemplos or 
-        clases.most_common(1)[0][1] / len(datos) >= acc_nodo):
-        
+
+    if (max_profundidad == 0 or len(datos) >= min_ejemplos 
+        or clases.most_common(1)[0][1] / len(datos) >= acc_nodo):
         return NodoN(terminal=True, clase_default=clase_default)
     
-    variable, valor = selecciona_variable_valor(
-        datos, target, atributos
-    )
+    # Seleccionamos el mejor par (atributo, valor) solo con los atributos seleccionados
+    variable, valor = selecciona_variable_valor(datos, target, atributos)
+
+    # Creamos el nodo
     nodo = NodoN(
-        terminal=False, 
+        terminal=False,
         clase_default=clase_default,
-        atributo=variable, 
-        valor=valor 
+        atributo=variable,
+        valor=valor
     )
+
+    # Llamamos recursivamente a los hijos (pasamos a None para variables_seleccionadas)
     nodo.hijo_menor = entrena_arbol(
         [d for d in datos if d[variable] < valor],
         target,
         clase_default,
         max_profundidad - 1 if max_profundidad is not None else None,
-        acc_nodo, min_ejemplos, variables_seleccionadas
-    )   
+        acc_nodo, min_ejemplos, None # Se pasa None para los hijos
+    )
+    
     nodo.hijo_mayor = entrena_arbol(
         [d for d in datos if d[variable] >= valor],
         target,
         clase_default,
         max_profundidad - 1 if max_profundidad is not None else None,
-        acc_nodo, min_ejemplos, variables_seleccionadas
-    )   
+        acc_nodo, min_ejemplos, None # Se para None para los hijos
+    )
+
     return nodo
 
 def selecciona_variable_valor(datos, target, atributos):
